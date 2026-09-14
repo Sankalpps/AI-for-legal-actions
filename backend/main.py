@@ -6,9 +6,11 @@ import io
 import logging
 from typing import Optional
 
+import os
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 try:
     import PyPDF2
@@ -38,7 +40,6 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    root_path="/api",
 )
 
 app.add_middleware(
@@ -260,6 +261,27 @@ async def lawyer_prep_file(
     )
     result = call_gemini(prompt)
     return result
+
+
+# ─── Static Frontend & SPA Fallback ───────────────────────────────────────────
+
+FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+ASSETS_DIR = os.path.join(FRONTEND_DIST, "assets")
+
+if os.path.exists(ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+
+@app.get("/{full_path:path}", tags=["Frontend"])
+async def serve_spa(full_path: str):
+    if full_path in ["docs", "redoc", "openapi.json", "health"]:
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    file_path = os.path.join(FRONTEND_DIST, full_path)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    index_path = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Frontend build not found. Please run 'npm run build' in the frontend directory."}
 
 
 # ─── Run ───────────────────────────────────────────────────────────────────────
