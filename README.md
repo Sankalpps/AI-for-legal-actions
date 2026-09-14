@@ -2,7 +2,7 @@
 
 > **GenAI-powered legal document analysis built for accessibility, clarity, and actionability.**
 
-LexAI uses **Google Gemini 2.0 Flash** to help non-lawyers understand, analyze, compare, and navigate legal documents — without replacing professional legal advice.
+LexAI uses **Google Gemini 3.6 Flash** to help non-lawyers understand, analyze, compare, and navigate legal documents — without replacing professional legal advice.
 
 ---
 

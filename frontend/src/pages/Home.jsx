@@ -73,7 +73,7 @@ export default function Home() {
       <div className="text-center py-10 mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-900/30 border border-primary-700/40 rounded-full text-primary-400 text-xs font-semibold mb-5">
           <Zap size={12} />
-          Powered by Google Gemini 2.0 Flash
+          Powered by Google Gemini 3.6 Flash
         </div>
         <h1 className="text-5xl font-extrabold text-white mb-4 leading-tight">
           Legal Assistance,

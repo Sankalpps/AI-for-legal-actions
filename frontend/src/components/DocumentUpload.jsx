@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, FileText, X, Loader2 } from "lucide-react";
+import { UploadCloud, FileText, X, Loader2, Sparkles } from "lucide-react";
 import clsx from "clsx";
 import { uploadFile } from "../api";
+import { SAMPLE_DOCUMENTS } from "../sampleData";
 
 /**
  * DocumentUpload — supports drag & drop or click for PDF/TXT files.
@@ -57,7 +58,28 @@ export default function DocumentUpload({
 
   return (
     <div className="space-y-3">
-      <label className="label">{label}</label>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <label className="label mb-0">{label}</label>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-slate-500 font-medium flex items-center gap-1 mr-1">
+            <Sparkles size={12} className="text-amber-400" /> Samples:
+          </span>
+          {SAMPLE_DOCUMENTS.map((sample) => (
+            <button
+              key={sample.id}
+              type="button"
+              onClick={() => {
+                setUploadedFile({ name: `${sample.title}.txt`, chars: sample.text.length });
+                onChange(sample.text);
+              }}
+              className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+              title={sample.description}
+            >
+              {sample.title.split(" ")[0]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Drag & Drop Zone */}
       {showUpload && (
