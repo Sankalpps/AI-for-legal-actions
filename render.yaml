@@ -13,9 +13,10 @@ services:
       - key: GEMINI_API_KEY
         sync: false
 
-  # ─── 2. Frontend (React / Vite Static Site) ─────────────────────────
-  - type: static
+  # ─── 2. Frontend (React / Vite Web Service) ─────────────────────────
+  - type: web
     name: lexai-frontend
+    runtime: static
     rootDir: frontend
     buildCommand: npm run build
     staticPublishPath: dist
