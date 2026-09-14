@@ -14,13 +14,11 @@ services:
         sync: false
 
   # ─── 2. Frontend (React / Vite Static Site) ─────────────────────────
-  - type: web
+  - type: static_site
     name: lexai-frontend
-    runtime: static
     rootDir: frontend
     buildCommand: npm run build
     staticPublishPath: dist
-    plan: free
     routes:
       - type: rewrite
         source: /*
