@@ -3,9 +3,16 @@ import axios from "axios";
 const DEFAULT_BACKEND_URL = "https://lexai-backend-2gwi.onrender.com";
 
 export const getApiBase = () => {
-  let rawBase = import.meta.env.VITE_API_BASE_URL || DEFAULT_BACKEND_URL;
-  if (rawBase && !rawBase.startsWith("http") && !rawBase.startsWith("/")) {
-    rawBase = `https://${rawBase}`;
+  let rawBase = (import.meta.env.VITE_API_BASE_URL || "").trim();
+  if (!rawBase || rawBase === "/api" || rawBase === "lexai-backend-2gwi") {
+    return DEFAULT_BACKEND_URL;
+  }
+  if (!rawBase.startsWith("http://") && !rawBase.startsWith("https://") && !rawBase.startsWith("/")) {
+    if (rawBase.endsWith(".onrender.com")) {
+      rawBase = `https://${rawBase}`;
+    } else {
+      rawBase = `https://${rawBase}.onrender.com`;
+    }
   }
   return rawBase.replace(/\/+$/, "");
 };
