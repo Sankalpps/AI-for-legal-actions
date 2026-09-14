@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Scale,
@@ -10,11 +9,8 @@ import {
   ClipboardList,
   Users,
   ChevronRight,
-  Settings,
-  Check,
 } from "lucide-react";
 import clsx from "clsx";
-import { getApiBase, setApiBase } from "../api";
 
 const navItems = [
   { to: "/", icon: Scale, label: "Home", exact: true },
@@ -28,15 +24,6 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const [showConfig, setShowConfig] = useState(false);
-  const [apiUrl, setApiUrl] = useState(() => getApiBase());
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    setApiBase(apiUrl);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   return (
     <aside className="w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col h-screen">
@@ -89,67 +76,11 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-slate-800 space-y-2">
-        {/* Backend URL Settings toggle */}
-        <div>
-          <button
-            onClick={() => setShowConfig(!showConfig)}
-            className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-white px-2 py-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <span className="flex items-center gap-1.5">
-              <Settings size={13} />
-              Backend Connection
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">
-              {showConfig ? "▲" : "▼"}
-            </span>
-          </button>
-
-          {showConfig && (
-            <div className="mt-2 p-2.5 bg-slate-800/80 border border-slate-700 rounded-xl space-y-2 animate-slide-up">
-              <label className="block text-[11px] font-semibold text-slate-300">
-                Backend API URL
-              </label>
-              <input
-                type="text"
-                value={apiUrl}
-                onChange={(e) => setApiUrl(e.target.value)}
-                placeholder="https://lexai-backend.onrender.com"
-                className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-white focus:outline-none focus:border-primary-500 font-mono"
-              />
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="flex-1 text-xs bg-primary-600 hover:bg-primary-500 text-white font-medium py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
-                >
-                  {saved ? <><Check size={12} /> Saved</> : "Apply"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setApiBase(null);
-                    setApiUrl(getApiBase());
-                    setSaved(true);
-                    setTimeout(() => setSaved(false), 2000);
-                  }}
-                  className="text-[10px] text-slate-500 hover:text-slate-300 px-1"
-                >
-                  Reset
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Paste your Render backend URL here if you get a Network Error.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Legal Disclaimer */}
-        <div className="bg-amber-900/20 border border-amber-800/40 rounded-xl p-2.5">
-          <p className="text-[11px] text-amber-400/80 font-medium mb-0.5">⚠ Disclaimer</p>
-          <p className="text-[10px] text-amber-300/60 leading-relaxed">
-            LexAI provides information only. Consult a qualified attorney.
+      <div className="px-4 py-4 border-t border-slate-800">
+        <div className="bg-amber-900/20 border border-amber-800/40 rounded-xl p-3">
+          <p className="text-xs text-amber-400/80 font-medium mb-1">⚠ Legal Disclaimer</p>
+          <p className="text-xs text-amber-300/60 leading-relaxed">
+            LexAI provides information only. Always consult a qualified legal professional.
           </p>
         </div>
       </div>

@@ -1,29 +1,13 @@
 import axios from "axios";
 
+const DEFAULT_BACKEND_URL = "https://lexai-backend-2gwi.onrender.com";
+
 export const getApiBase = () => {
-  const custom = typeof window !== "undefined" ? localStorage.getItem("LEXAI_API_URL") : null;
-  if (custom && custom.trim()) {
-    let url = custom.trim();
-    if (!url.startsWith("http") && !url.startsWith("/")) {
-      url = `https://${url}`;
-    }
-    return url.replace(/\/+$/, "");
-  }
-  let rawBase = import.meta.env.VITE_API_BASE_URL || "/api";
+  let rawBase = import.meta.env.VITE_API_BASE_URL || DEFAULT_BACKEND_URL;
   if (rawBase && !rawBase.startsWith("http") && !rawBase.startsWith("/")) {
     rawBase = `https://${rawBase}`;
   }
   return rawBase.replace(/\/+$/, "");
-};
-
-export const setApiBase = (url) => {
-  if (typeof window !== "undefined") {
-    if (url && url.trim()) {
-      localStorage.setItem("LEXAI_API_URL", url.trim());
-    } else {
-      localStorage.removeItem("LEXAI_API_URL");
-    }
-  }
 };
 
 const api = axios.create({
@@ -49,7 +33,7 @@ api.interceptors.response.use(
 
     if (error.message === "Network Error") {
       const currentUrl = getApiBase();
-      message = `Network Error: Unable to connect to backend at (${currentUrl}). If your backend on Render is sleeping, it takes ~45 seconds to wake up. You can also configure the exact Backend URL in the sidebar settings.`;
+      message = `Network Error: Unable to connect to backend (${currentUrl}). If the free Render backend is spinning up from idle, please wait ~30 seconds and click Try Again.`;
     }
     return Promise.reject(new Error(message || "An unexpected error occurred. Please try again."));
   }
