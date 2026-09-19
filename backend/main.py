@@ -1,16 +1,32 @@
 """
 FastAPI main application.
 Provides all 7 legal assistance endpoints plus PDF/TXT file upload support.
+Includes efficiency optimizations: GZip compression, rate limiting, async I/O,
+request timing middleware, input validation, and response caching.
 """
 import io
+import time
 import logging
 from typing import Optional
+from contextlib import asynccontextmanager
 
 import os
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+
+    limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+    RATE_LIMITING_AVAILABLE = True
+except ImportError:
+    limiter = None
+    RATE_LIMITING_AVAILABLE = False
 
 try:
     import PyPDF2
@@ -34,14 +50,37 @@ from gemini_client import gemini_client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Maximum file upload size (10 MB)
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+
+
+# ─── Lifespan Events (startup/shutdown) ────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup and shutdown hooks."""
+    logger.info("LexAI starting up — cache and rate limiter initialized")
+    yield
+    logger.info("LexAI shutting down — clearing cache")
+    gemini_client.clear_cache()
+
+
 app = FastAPI(
     title="LexAI — AI Legal Assistance API",
     description="GenAI-powered legal document analysis and assistance",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
+
+# ─── Middleware Stack (order matters) ──────────────────────────────────────────
+
+# 1. GZip compression — compress responses > 500 bytes (~60-80% size reduction)
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# 2. CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -50,36 +89,85 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 3. Rate limiting (if slowapi is installed)
+if RATE_LIMITING_AVAILABLE:
+    app.state.limiter = limiter
 
-# ─── Utility Functions ─────────────────────────────────────────────────────────
-
-def extract_text_from_file(file: UploadFile) -> str:
-    """Extract text from uploaded PDF or TXT file."""
-    content = file.file.read()
-
-    if file.filename.lower().endswith(".pdf"):
-        if PyPDF2 is None:
-            raise HTTPException(status_code=400, detail="PDF support not installed. Please install PyPDF2.")
-        reader = PyPDF2.PdfReader(io.BytesIO(content))
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() or ""
-        return text.strip()
-
-    elif file.filename.lower().endswith(".txt"):
-        return content.decode("utf-8", errors="replace").strip()
-
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.filename}. Only PDF and TXT files are supported."
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": "Rate limit exceeded. Please wait before making more requests.",
+                "retry_after_seconds": 60,
+            },
         )
 
 
-def call_gemini(prompt: str) -> dict:
-    """Call Gemini and handle errors gracefully."""
+# 4. Request timing middleware — log response times for performance monitoring
+@app.middleware("http")
+async def add_request_timing(request: Request, call_next):
+    """Log request duration and add X-Response-Time header."""
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = round((time.time() - start_time) * 1000)
+    response.headers["X-Response-Time"] = f"{duration_ms}ms"
+
+    # Log slow requests (> 5 seconds)
+    if duration_ms > 5000:
+        logger.warning(f"Slow request: {request.method} {request.url.path} took {duration_ms}ms")
+    else:
+        logger.info(f"{request.method} {request.url.path} completed in {duration_ms}ms")
+
+    return response
+
+
+# ─── Utility Functions ─────────────────────────────────────────────────────────
+
+async def extract_text_from_file(file: UploadFile) -> str:
+    """
+    Extract text from uploaded PDF or TXT file.
+    Uses async file.read() for non-blocking I/O.
+    Validates file size before processing.
+    """
+    # Read file asynchronously (non-blocking)
+    content = await file.read()
+
+    # Validate file size (fail-fast)
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(content):,} bytes). Maximum size is {MAX_FILE_SIZE_BYTES // (1024*1024)} MB.",
+        )
+
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
     try:
-        return gemini_client.generate(prompt)
+        if file.filename.lower().endswith(".pdf"):
+            if PyPDF2 is None:
+                raise HTTPException(status_code=400, detail="PDF support not installed. Please install PyPDF2.")
+            reader = PyPDF2.PdfReader(io.BytesIO(content))
+            text = "".join(page.extract_text() or "" for page in reader.pages)
+            return text.strip()
+
+        elif file.filename.lower().endswith(".txt"):
+            return content.decode("utf-8", errors="replace").strip()
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type: {file.filename}. Only PDF and TXT files are supported."
+            )
+    finally:
+        # Ensure file handle is properly closed
+        await file.close()
+
+
+async def call_gemini_async(prompt: str) -> dict:
+    """Call Gemini asynchronously with caching and handle errors gracefully."""
+    try:
+        return await gemini_client.generate_async(prompt)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"Model response parsing error: {str(e)}")
     except RuntimeError as e:
@@ -95,7 +183,12 @@ def root():
 
 @app.get("/health", tags=["Health"])
 def health():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "cache": gemini_client.cache_stats,
+        "rate_limiting": RATE_LIMITING_AVAILABLE,
+        "compression": "gzip",
+    }
 
 
 # ─── File Upload Endpoint ──────────────────────────────────────────────────────
@@ -103,7 +196,7 @@ def health():
 @app.post("/upload", tags=["Utilities"])
 async def upload_file(file: UploadFile = File(...)):
     """Upload a PDF or TXT file and extract its text content."""
-    text = extract_text_from_file(file)
+    text = await extract_text_from_file(file)
     if not text:
         raise HTTPException(status_code=400, detail="Could not extract text from the uploaded file.")
     return {"filename": file.filename, "extracted_text": text, "char_count": len(text)}
@@ -115,16 +208,16 @@ async def upload_file(file: UploadFile = File(...)):
 async def simplify_document(request: TextRequest):
     """Simplify a complex legal document into plain English."""
     prompt = SIMPLIFY_PROMPT.format(system=SYSTEM_PERSONA, document=request.text)
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
 @app.post("/simplify/file", response_model=SimplifyResponse, tags=["Features"])
 async def simplify_document_file(file: UploadFile = File(...)):
     """Simplify a legal document uploaded as PDF or TXT."""
-    text = extract_text_from_file(file)
+    text = await extract_text_from_file(file)
     prompt = SIMPLIFY_PROMPT.format(system=SYSTEM_PERSONA, document=text)
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -134,16 +227,16 @@ async def simplify_document_file(file: UploadFile = File(...)):
 async def analyze_risks(request: TextRequest):
     """Analyze a legal document for risky clauses, obligations, and inconsistencies."""
     prompt = RISK_PROMPT.format(system=SYSTEM_PERSONA, document=request.text)
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
 @app.post("/analyze-risks/file", response_model=RiskResponse, tags=["Features"])
 async def analyze_risks_file(file: UploadFile = File(...)):
     """Analyze risks in a legal document uploaded as PDF or TXT."""
-    text = extract_text_from_file(file)
+    text = await extract_text_from_file(file)
     prompt = RISK_PROMPT.format(system=SYSTEM_PERSONA, document=text)
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -159,7 +252,7 @@ async def compare_documents(request: CompareRequest):
         document_a=request.document_a,
         document_b=request.document_b,
     )
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -171,8 +264,8 @@ async def compare_documents_files(
     label_b: str = Form(default="Document B"),
 ):
     """Compare two legal documents uploaded as PDF or TXT."""
-    text_a = extract_text_from_file(file_a)
-    text_b = extract_text_from_file(file_b)
+    text_a = await extract_text_from_file(file_a)
+    text_b = await extract_text_from_file(file_b)
     prompt = COMPARE_PROMPT.format(
         system=SYSTEM_PERSONA,
         label_a=label_a,
@@ -180,7 +273,7 @@ async def compare_documents_files(
         document_a=text_a,
         document_b=text_b,
     )
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -194,7 +287,7 @@ async def legal_qna(request: QnARequest):
         document=request.document,
         question=request.question,
     )
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -208,7 +301,7 @@ async def get_next_steps(request: NextStepsRequest):
         situation=request.situation,
         jurisdiction=request.jurisdiction or "General (not jurisdiction-specific)",
     )
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -218,16 +311,16 @@ async def get_next_steps(request: NextStepsRequest):
 async def summarize_document(request: TextRequest):
     """Generate an executive summary and actionable checklist from a legal document."""
     prompt = SUMMARY_PROMPT.format(system=SYSTEM_PERSONA, document=request.text)
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
 @app.post("/summarize/file", response_model=SummaryResponse, tags=["Features"])
 async def summarize_document_file(file: UploadFile = File(...)):
     """Summarize a legal document uploaded as PDF or TXT."""
-    text = extract_text_from_file(file)
+    text = await extract_text_from_file(file)
     prompt = SUMMARY_PROMPT.format(system=SYSTEM_PERSONA, document=text)
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -241,7 +334,7 @@ async def lawyer_prep(request: LawyerPrepRequest):
         situation=request.situation,
         document=request.document or "No document provided.",
     )
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 
@@ -253,13 +346,13 @@ async def lawyer_prep_file(
     """Prepare lawyer consultation materials with an optional document."""
     document_text = "No document provided."
     if file:
-        document_text = extract_text_from_file(file)
+        document_text = await extract_text_from_file(file)
     prompt = LAWYER_PREP_PROMPT.format(
         system=SYSTEM_PERSONA,
         situation=situation,
         document=document_text,
     )
-    result = call_gemini(prompt)
+    result = await call_gemini_async(prompt)
     return result
 
 

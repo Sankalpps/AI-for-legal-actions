@@ -1,37 +1,127 @@
 """
 Pydantic models for request/response validation.
+Includes field-level validators for input size limits and data quality (efficiency).
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
+
+
+# ─── Constants ─────────────────────────────────────────────────────────────────
+
+MAX_DOCUMENT_LENGTH = 100_000    # ~100KB max document text (fail-fast before Gemini)
+MAX_QUESTION_LENGTH = 2_000     # Max question/situation text length
+MIN_TEXT_LENGTH = 10             # Minimum meaningful text length
 
 
 # ─── Request Models ────────────────────────────────────────────────────────────
 
 class TextRequest(BaseModel):
+    """Request with a single text document."""
+    model_config = {"str_strip_whitespace": True}
+
     text: str
     context: Optional[str] = None
 
+    @field_validator("text")
+    @classmethod
+    def validate_text_length(cls, v: str) -> str:
+        if len(v) < MIN_TEXT_LENGTH:
+            raise ValueError(f"Text must be at least {MIN_TEXT_LENGTH} characters long.")
+        if len(v) > MAX_DOCUMENT_LENGTH:
+            raise ValueError(
+                f"Text exceeds maximum length of {MAX_DOCUMENT_LENGTH:,} characters "
+                f"({len(v):,} provided). Please shorten the document."
+            )
+        return v
+
 
 class CompareRequest(BaseModel):
+    """Request for comparing two documents."""
+    model_config = {"str_strip_whitespace": True}
+
     document_a: str
     document_b: str
     label_a: Optional[str] = "Document A"
     label_b: Optional[str] = "Document B"
 
+    @field_validator("document_a", "document_b")
+    @classmethod
+    def validate_document_length(cls, v: str) -> str:
+        if len(v) < MIN_TEXT_LENGTH:
+            raise ValueError(f"Document must be at least {MIN_TEXT_LENGTH} characters long.")
+        if len(v) > MAX_DOCUMENT_LENGTH:
+            raise ValueError(
+                f"Document exceeds maximum length of {MAX_DOCUMENT_LENGTH:,} characters "
+                f"({len(v):,} provided). Please shorten the document."
+            )
+        return v
+
 
 class QnARequest(BaseModel):
+    """Request for question-and-answer on a document."""
+    model_config = {"str_strip_whitespace": True}
+
     document: str
     question: str
 
+    @field_validator("document")
+    @classmethod
+    def validate_document(cls, v: str) -> str:
+        if len(v) < MIN_TEXT_LENGTH:
+            raise ValueError(f"Document must be at least {MIN_TEXT_LENGTH} characters long.")
+        if len(v) > MAX_DOCUMENT_LENGTH:
+            raise ValueError(f"Document exceeds maximum length of {MAX_DOCUMENT_LENGTH:,} characters.")
+        return v
+
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, v: str) -> str:
+        if len(v) < 3:
+            raise ValueError("Question must be at least 3 characters long.")
+        if len(v) > MAX_QUESTION_LENGTH:
+            raise ValueError(f"Question exceeds maximum length of {MAX_QUESTION_LENGTH:,} characters.")
+        return v
+
 
 class NextStepsRequest(BaseModel):
+    """Request for legal options and next steps."""
+    model_config = {"str_strip_whitespace": True}
+
     situation: str
     jurisdiction: Optional[str] = "General (not jurisdiction-specific)"
 
+    @field_validator("situation")
+    @classmethod
+    def validate_situation(cls, v: str) -> str:
+        if len(v) < MIN_TEXT_LENGTH:
+            raise ValueError(f"Situation must be at least {MIN_TEXT_LENGTH} characters long.")
+        if len(v) > MAX_QUESTION_LENGTH:
+            raise ValueError(f"Situation exceeds maximum length of {MAX_QUESTION_LENGTH:,} characters.")
+        return v
+
 
 class LawyerPrepRequest(BaseModel):
+    """Request for lawyer consultation preparation."""
+    model_config = {"str_strip_whitespace": True}
+
     situation: str
     document: Optional[str] = None
+
+    @field_validator("situation")
+    @classmethod
+    def validate_situation(cls, v: str) -> str:
+        if len(v) < MIN_TEXT_LENGTH:
+            raise ValueError(f"Situation must be at least {MIN_TEXT_LENGTH} characters long.")
+        if len(v) > MAX_QUESTION_LENGTH:
+            raise ValueError(f"Situation exceeds maximum length of {MAX_QUESTION_LENGTH:,} characters.")
+        return v
+
+    @field_validator("document")
+    @classmethod
+    def validate_document(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and len(v) > MAX_DOCUMENT_LENGTH:
+            raise ValueError(f"Document exceeds maximum length of {MAX_DOCUMENT_LENGTH:,} characters.")
+        return v
 
 
 # ─── Response Models ───────────────────────────────────────────────────────────
