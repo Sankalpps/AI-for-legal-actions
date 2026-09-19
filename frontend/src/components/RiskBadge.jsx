@@ -1,5 +1,4 @@
 import { AlertTriangle, AlertCircle, CheckCircle } from "lucide-react";
-import clsx from "clsx";
 
 const riskConfig = {
   HIGH: {
@@ -24,8 +23,8 @@ export default function RiskBadge({ level = "LOW", showLabel = true }) {
   const { className, Icon, label } = config;
 
   return (
-    <span className={className}>
-      <Icon size={11} />
+    <span className={className} role="status" aria-label={`Risk level: ${label}`}>
+      <Icon size={11} aria-hidden="true" />
       {showLabel && label}
     </span>
   );
@@ -40,7 +39,11 @@ const urgencyConfig = {
 
 export function UrgencyBadge({ level = "LONG_TERM" }) {
   const config = urgencyConfig[level?.toUpperCase()] || urgencyConfig.LONG_TERM;
-  return <span className={config.className}>{config.label}</span>;
+  return (
+    <span className={config.className} role="status" aria-label={`Urgency: ${config.label}`}>
+      {config.label}
+    </span>
+  );
 }
 
 // Confidence badge for Q&A
@@ -52,7 +55,11 @@ const confidenceConfig = {
 
 export function ConfidenceBadge({ level = "MEDIUM" }) {
   const config = confidenceConfig[level?.toUpperCase()] || confidenceConfig.MEDIUM;
-  return <span className={config.className}>{config.label}</span>;
+  return (
+    <span className={config.className} role="status" aria-label={`Confidence level: ${config.label}`}>
+      {config.label}
+    </span>
+  );
 }
 
 // Priority badge for checklists
@@ -64,5 +71,9 @@ const priorityConfig = {
 
 export function PriorityBadge({ level = "MEDIUM" }) {
   const config = priorityConfig[level?.toUpperCase()] || priorityConfig.MEDIUM;
-  return <span className={config.className}>{config.label}</span>;
+  return (
+    <span className={config.className} role="status" aria-label={`Priority: ${config.label}`}>
+      {config.label}
+    </span>
+  );
 }

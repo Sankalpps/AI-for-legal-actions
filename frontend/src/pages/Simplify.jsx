@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileText, BookOpen } from "lucide-react";
 import DocumentUpload from "../components/DocumentUpload";
-import { Disclaimer, LoadingCard, ErrorCard, SectionDivider, EmptyState } from "../components/ResultCard";
+import { Disclaimer, LoadingCard, ErrorCard, EmptyState } from "../components/ResultCard";
 import { simplifyDocument } from "../api";
 
 export default function Simplify() {
@@ -30,7 +30,7 @@ export default function Simplify() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <FileText size={22} className="text-blue-400" />
+          <FileText size={22} className="text-blue-400" aria-hidden="true" />
           <h1 className="section-title">Simplify Document</h1>
         </div>
         <p className="section-subtitle">
@@ -38,9 +38,10 @@ export default function Simplify() {
         </p>
       </div>
 
-      {/* Input */}
-      <div className="card">
+      {/* Input Form */}
+      <div className="card" role="search" aria-label="Simplify Document Form">
         <DocumentUpload
+          id="simplify-doc-input"
           label="Legal Document"
           value={text}
           onChange={setText}
@@ -50,33 +51,34 @@ export default function Simplify() {
           <button
             onClick={handleSubmit}
             disabled={!text.trim() || loading}
-            className="btn-primary"
+            aria-label="Simplify legal document"
+            className="btn-primary focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
           >
-            {loading ? <><span className="loading-spinner" /> Simplifying...</> : <><BookOpen size={16} /> Simplify Document</>}
+            {loading ? <><span className="loading-spinner" aria-hidden="true" /> Simplifying...</> : <><BookOpen size={16} aria-hidden="true" /> Simplify Document</>}
           </button>
         </div>
       </div>
 
       {/* Results */}
-      {loading && <LoadingCard message="Simplifying your document..." />}
+      {loading && <LoadingCard message="Simplifying your document into plain English..." />}
       {error && <ErrorCard message={error} onRetry={handleSubmit} />}
 
       {result && !loading && (
-        <div className="space-y-4 animate-slide-up">
+        <section className="space-y-4 animate-slide-up" aria-label="Simplification Results" role="region">
           {/* Overview */}
           <div className="card">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h2 className="text-lg font-bold text-white">Document Overview</h2>
               <div className="flex gap-2">
-                <span className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs font-medium border border-slate-700">
+                <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-lg text-xs font-medium border border-slate-700">
                   {result.document_type}
                 </span>
-                <span className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs font-medium border border-slate-700">
+                <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-lg text-xs font-medium border border-slate-700">
                   {result.reading_level} Level
                 </span>
               </div>
             </div>
-            <div className="legal-prose">
+            <div className="legal-prose text-slate-200 leading-relaxed space-y-3">
               {result.plain_summary.split("\n").filter(Boolean).map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
@@ -87,13 +89,13 @@ export default function Simplify() {
           {result.key_terms?.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-bold text-white mb-4">Key Legal Terms Explained</h2>
-              <div className="space-y-3">
+              <div className="space-y-3" role="list">
                 {result.key_terms.map((item, i) => (
-                  <div key={i} className="flex gap-3 p-3 bg-slate-800/60 rounded-xl">
-                    <div className="flex-shrink-0 w-1.5 bg-blue-500 rounded-full" />
+                  <div key={i} role="listitem" className="flex gap-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+                    <div className="flex-shrink-0 w-1.5 bg-blue-500 rounded-full" aria-hidden="true" />
                     <div>
                       <p className="text-sm font-semibold text-blue-300">{item.term}</p>
-                      <p className="text-sm text-slate-400 mt-0.5">{item.definition}</p>
+                      <p className="text-sm text-slate-300 mt-0.5">{item.definition}</p>
                     </div>
                   </div>
                 ))}
@@ -102,7 +104,7 @@ export default function Simplify() {
           )}
 
           <Disclaimer text={result.disclaimer} />
-        </div>
+        </section>
       )}
 
       {!result && !loading && !error && (

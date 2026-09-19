@@ -30,7 +30,7 @@ export default function RiskAnalysis() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <AlertTriangle size={22} className="text-red-400" />
+          <AlertTriangle size={22} className="text-red-400" aria-hidden="true" />
           <h1 className="section-title">Risk Analysis</h1>
         </div>
         <p className="section-subtitle">
@@ -39,26 +39,36 @@ export default function RiskAnalysis() {
       </div>
 
       <div className="card">
-        <DocumentUpload label="Legal Document" value={text} onChange={setText}
-          placeholder="Paste your contract, lease, terms of service, or any legal document..." />
+        <DocumentUpload
+          id="risk-doc-input"
+          label="Legal Document"
+          value={text}
+          onChange={setText}
+          placeholder="Paste your contract, lease, terms of service, or any legal document..."
+        />
         <div className="mt-4 flex justify-end">
-          <button onClick={handleSubmit} disabled={!text.trim() || loading} className="btn-primary">
-            {loading ? <><span className="loading-spinner" /> Analyzing...</> : <><ShieldAlert size={16} /> Analyze Risks</>}
+          <button
+            onClick={handleSubmit}
+            disabled={!text.trim() || loading}
+            aria-label="Analyze document risks"
+            className="btn-primary focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
+          >
+            {loading ? <><span className="loading-spinner" aria-hidden="true" /> Analyzing...</> : <><ShieldAlert size={16} aria-hidden="true" /> Analyze Risks</>}
           </button>
         </div>
       </div>
 
-      {loading && <LoadingCard message="Analyzing document for risks..." />}
+      {loading && <LoadingCard message="Analyzing document for potential legal risks..." />}
       {error && <ErrorCard message={error} onRetry={handleSubmit} />}
 
       {result && !loading && (
-        <div className="space-y-4 animate-slide-up">
+        <section className="space-y-4 animate-slide-up" role="region" aria-label="Risk Analysis Results">
           {/* Overall Risk */}
           <div className="card">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h2 className="text-lg font-bold text-white mb-0.5">Overall Risk Assessment</h2>
-                <p className="text-sm text-slate-400">{result.document_type}</p>
+                <p className="text-sm text-slate-300">{result.document_type}</p>
               </div>
               <div className="text-right">
                 <RiskBadge level={result.overall_risk} />
@@ -70,10 +80,10 @@ export default function RiskAnalysis() {
           {result.risk_clauses?.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <AlertTriangle size={18} className="text-red-400" />
+                <AlertTriangle size={18} className="text-red-400" aria-hidden="true" />
                 Risk Clauses ({result.risk_clauses.length})
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-3" role="list">
                 {result.risk_clauses
                   .sort((a, b) => {
                     const order = { HIGH: 0, MEDIUM: 1, LOW: 2 };
@@ -82,23 +92,24 @@ export default function RiskAnalysis() {
                   .map((clause, i) => (
                     <div
                       key={i}
+                      role="listitem"
                       className={`p-4 rounded-xl border ${
                         clause.risk_level === "HIGH"
-                          ? "bg-red-900/10 border-red-800/40"
+                          ? "bg-red-900/20 border-red-800/60"
                           : clause.risk_level === "MEDIUM"
-                          ? "bg-amber-900/10 border-amber-800/40"
+                          ? "bg-amber-900/20 border-amber-800/60"
                           : "bg-slate-800/60 border-slate-700"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm font-medium text-slate-200 leading-relaxed flex-1">
+                      <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+                        <blockquote className="text-sm font-medium text-slate-100 leading-relaxed flex-1 italic">
                           "{clause.clause_text}"
-                        </p>
+                        </blockquote>
                         <RiskBadge level={clause.risk_level} />
                       </div>
-                      <p className="text-sm text-slate-400 mt-2">{clause.risk_reason}</p>
+                      <p className="text-sm text-slate-300 mt-2">{clause.risk_reason}</p>
                       {clause.page_reference && (
-                        <p className="text-xs text-slate-600 mt-1">📍 {clause.page_reference}</p>
+                        <p className="text-xs text-slate-400 mt-1">📍 Reference: {clause.page_reference}</p>
                       )}
                     </div>
                   ))}
@@ -110,13 +121,13 @@ export default function RiskAnalysis() {
           {result.obligations?.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <List size={18} className="text-amber-400" />
+                <List size={18} className="text-amber-400" aria-hidden="true" />
                 Your Obligations
               </h2>
               <ul className="space-y-2">
                 {result.obligations.map((obligation, i) => (
-                  <li key={i} className="flex gap-2.5 text-sm text-slate-300">
-                    <span className="text-amber-400 mt-0.5 flex-shrink-0">▸</span>
+                  <li key={i} className="flex gap-2.5 text-sm text-slate-200">
+                    <span className="text-amber-400 mt-0.5 flex-shrink-0" aria-hidden="true">▸</span>
                     {obligation}
                   </li>
                 ))}
@@ -126,15 +137,15 @@ export default function RiskAnalysis() {
 
           {/* Inconsistencies */}
           {result.inconsistencies?.length > 0 && (
-            <div className="card border-purple-800/40 bg-purple-900/10">
+            <div className="card border-purple-800/40 bg-purple-900/20">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <GitBranch size={18} className="text-purple-400" />
+                <GitBranch size={18} className="text-purple-400" aria-hidden="true" />
                 Inconsistencies Found
               </h2>
               <ul className="space-y-2">
                 {result.inconsistencies.map((item, i) => (
-                  <li key={i} className="flex gap-2.5 text-sm text-slate-300">
-                    <span className="text-purple-400 mt-0.5 flex-shrink-0">⚠</span>
+                  <li key={i} className="flex gap-2.5 text-sm text-slate-200">
+                    <span className="text-purple-400 mt-0.5 flex-shrink-0" aria-hidden="true">⚠</span>
                     {item}
                   </li>
                 ))}
@@ -143,7 +154,7 @@ export default function RiskAnalysis() {
           )}
 
           <Disclaimer text={result.disclaimer} />
-        </div>
+        </section>
       )}
 
       {!result && !loading && !error && (

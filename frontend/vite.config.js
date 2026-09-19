@@ -23,23 +23,18 @@ export default defineConfig({
       },
     },
   },
-  // ─── Build Optimizations (Efficiency) ────────────────────────────────────────
   build: {
-    // Split vendor libraries into separate cacheable chunks
+    target: "es2020",
+    chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-utils": ["axios", "clsx"],
-          "vendor-ui": ["lucide-react", "react-dropzone", "react-markdown"],
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("axios")) return "vendor-axios";
+          }
         },
       },
     },
-    // Enable source maps for production debugging
-    sourcemap: false,
-    // Target modern browsers for smaller output
-    target: "es2020",
-    // Increase chunk size warning limit
-    chunkSizeWarningLimit: 600,
   },
 });

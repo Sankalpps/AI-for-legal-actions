@@ -70,9 +70,9 @@ export default function Home() {
   return (
     <div className="animate-fade-in">
       {/* Hero */}
-      <div className="text-center py-10 mb-8">
+      <section aria-label="Hero Introduction" className="text-center py-10 mb-8">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-900/30 border border-primary-700/40 rounded-full text-primary-400 text-xs font-semibold mb-5">
-          <Zap size={12} />
+          <Zap size={12} aria-hidden="true" />
           Powered by Google Gemini 3.6 Flash
         </div>
         <h1 className="text-5xl font-extrabold text-white mb-4 leading-tight">
@@ -80,63 +80,69 @@ export default function Home() {
           <br />
           <span className="text-primary-400">Made Accessible</span>
         </h1>
-        <p className="text-slate-400 text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+        <p className="text-slate-300 text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
           LexAI uses advanced AI to help you understand, analyze, and navigate 
           legal documents — without needing a law degree.
         </p>
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 flex-wrap">
           <button
             onClick={() => navigate("/simplify")}
-            className="btn-primary text-base px-6 py-3"
+            aria-label="Get started by simplifying a legal document"
+            className="btn-primary text-base px-6 py-3 focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
           >
-            Get Started <ArrowRight size={18} />
+            Get Started <ArrowRight size={18} aria-hidden="true" />
           </button>
           <button
             onClick={() => navigate("/qna")}
-            className="btn-secondary text-base px-6 py-3"
+            aria-label="Ask a legal question"
+            className="btn-secondary text-base px-6 py-3 focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none"
           >
             Ask a Question
           </button>
         </div>
-      </div>
+      </section>
 
       {/* Trust badges */}
-      <div className="flex items-center justify-center gap-8 mb-10 text-xs text-slate-500">
+      <div className="flex items-center justify-center gap-8 mb-10 text-xs text-slate-400 flex-wrap" role="region" aria-label="Trust Badges">
         <div className="flex items-center gap-1.5">
-          <Shield size={14} className="text-green-500" />
+          <Shield size={14} className="text-green-400" aria-hidden="true" />
           <span>Confidential & Secure</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Globe size={14} className="text-blue-500" />
+          <Globe size={14} className="text-blue-400" aria-hidden="true" />
           <span>Supports all jurisdictions</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Scale size={14} className="text-amber-500" />
+          <Scale size={14} className="text-amber-400" aria-hidden="true" />
           <span>Not legal advice — always consult a lawyer</span>
         </div>
       </div>
 
       {/* Feature grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {features.map(({ to, icon: Icon, title, desc, color, bg }) => (
-          <button
-            key={to}
-            onClick={() => navigate(to)}
-            className={`card-hover text-left border ${bg} group`}
-          >
-            <div className={`inline-flex p-2 rounded-xl ${bg} mb-4`}>
-              <Icon size={22} className={color} />
-            </div>
-            <h3 className="text-white font-semibold mb-1.5 group-hover:text-primary-300 transition-colors">
-              {title}
-            </h3>
-            <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
-            <div className={`mt-3 text-xs font-semibold ${color} flex items-center gap-1`}>
-              Open <ArrowRight size={12} />
-            </div>
-          </button>
-        ))}
-      </div>
+      <section aria-label="Features Directory">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" role="list">
+          {features.map(({ to, icon: Icon, title, desc, color, bg }) => (
+            <button
+              key={to}
+              onClick={() => navigate(to)}
+              role="listitem"
+              aria-label={`Open ${title}: ${desc}`}
+              className={`card-hover text-left border ${bg} group focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:outline-none`}
+            >
+              <div className={`inline-flex p-2 rounded-xl ${bg} mb-4`} aria-hidden="true">
+                <Icon size={22} className={color} />
+              </div>
+              <h2 className="text-white font-semibold text-lg mb-1.5 group-hover:text-primary-300 transition-colors">
+                {title}
+              </h2>
+              <p className="text-sm text-slate-300 leading-relaxed">{desc}</p>
+              <div className={`mt-3 text-xs font-semibold ${color} flex items-center gap-1`} aria-hidden="true">
+                Open feature <ArrowRight size={12} />
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
