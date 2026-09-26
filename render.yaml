@@ -12,6 +12,22 @@ services:
         value: 3.11.9
       - key: GEMINI_API_KEY
         sync: false
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      # Cost controls
+      - key: DAILY_AI_CALL_LIMIT
+        value: "300"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "20"
+      # Set to your deployed frontend URL to stop other sites calling this API
+      - key: ALLOWED_ORIGINS
+        value: "*"
 
   # ─── 2. Frontend (React / Vite Web Service) ─────────────────────────
   - type: web

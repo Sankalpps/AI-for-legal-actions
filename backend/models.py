@@ -8,7 +8,7 @@ from typing import Optional, List
 
 # ─── Constants ─────────────────────────────────────────────────────────────────
 
-MAX_DOCUMENT_LENGTH = 100_000    # ~100KB max document text (fail-fast before Gemini)
+MAX_DOCUMENT_LENGTH = 30_000     # Keep provider input usage bounded (~7,500 tokens)
 MAX_QUESTION_LENGTH = 2_000     # Max question/situation text length
 MIN_TEXT_LENGTH = 10             # Minimum meaningful text length
 
@@ -138,7 +138,7 @@ class RiskClause(BaseModel):
     clause_text: str
     risk_level: str                # HIGH | MEDIUM | LOW
     risk_reason: str
-    page_reference: Optional[str]
+    page_reference: Optional[str] = None
 
 
 class RiskResponse(BaseModel):
@@ -169,10 +169,15 @@ class CompareResponse(BaseModel):
 
 class QnAResponse(BaseModel):
     answer: str
-    source_clause: str
+    source_clause: str = ""
     confidence: str                # HIGH | MEDIUM | LOW
-    caveat: str
+    caveat: str = ""
     disclaimer: str
+
+    @field_validator("source_clause", "caveat", mode="before")
+    @classmethod
+    def _none_to_empty(cls, v):
+        return "" if v is None else v
 
 
 class NextStep(BaseModel):

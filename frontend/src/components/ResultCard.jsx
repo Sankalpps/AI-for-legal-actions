@@ -39,6 +39,8 @@ export function LoadingCard({ message = "Analyzing document..." }) {
  * Accessible error state card with role="alert" and aria-live="assertive".
  */
 export function ErrorCard({ message, onRetry }) {
+  const isQuotaError = message?.toLowerCase().includes("quota");
+
   return (
     <div
       className="card border-red-800 bg-red-900/20 animate-fade-in"
@@ -50,7 +52,7 @@ export function ErrorCard({ message, onRetry }) {
         <div>
           <h3 className="text-red-200 font-semibold mb-1">Something went wrong</h3>
           <p className="text-red-300 text-sm">{message}</p>
-          {onRetry && (
+          {onRetry && !isQuotaError && (
             <button
               onClick={onRetry}
               aria-label="Retry action"

@@ -4,11 +4,11 @@ import axios from "axios";
 
 const DEFAULT_BACKEND_URL = "https://lexai-backend-2gwi.onrender.com";
 
-/** Cache TTL in milliseconds (5 minutes). */
-const CACHE_TTL_MS = 5 * 60 * 1000;
+/** Cache TTL in milliseconds (30 minutes). Repeat requests cost no AI credits. */
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 /** Maximum retry attempts for failed requests. */
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 0;
 
 /** Base delay for exponential backoff (ms). */
 const BASE_RETRY_DELAY_MS = 1000;
@@ -39,8 +39,17 @@ const responseCache = new Map();
  * Generate a deterministic cache key from method + URL + body.
  * Uses JSON.stringify for the body to ensure consistent hashing.
  */
+function normalize(value) {
+  if (typeof value === "string") return value.replace(/\s+/g, " ").trim();
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalize(v)]));
+  }
+  return value;
+}
+
 function cacheKey(method, url, body) {
-  return `${method}:${url}:${JSON.stringify(body || "")}`;
+  // Whitespace-insensitive, so re-submitting the same text with different spacing is a cache hit.
+  return `${method}:${url}:${JSON.stringify(normalize(body || ""))}`;
 }
 
 /** Retrieve a cached response if it exists and hasn't expired. */
@@ -95,7 +104,12 @@ api.interceptors.response.use(
       const currentUrl = getApiBase();
       message = `Network Error: Unable to connect to backend (${currentUrl}). If the free Render backend is spinning up from idle, please wait ~30 seconds and click Try Again.`;
     }
-    return Promise.reject(new Error(message || "An unexpected error occurred. Please try again."));
+    const normalizedError = new Error(message || "An unexpected error occurred. Please try again.");
+    normalizedError.response = error.response;
+    normalizedError.status = error.response?.status;
+    normalizedError.retryAfter = error.response?.headers?.["retry-after"];
+    normalizedError.isQuotaError = error.response?.status === 429;
+    return Promise.reject(normalizedError);
   }
 );
 
@@ -110,9 +124,8 @@ async function withRetry(requestFn, retries = MAX_RETRIES) {
     try {
       return await requestFn();
     } catch (error) {
-      const isRetryable =
-        !error.response ||
-        (error.response && error.response.status >= 500);
+      const status = error.response?.status;
+      const isRetryable = !error.response || status === 502 || status === 504;
 
       if (!isRetryable || attempt === retries) {
         throw error;

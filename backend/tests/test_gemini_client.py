@@ -1,9 +1,10 @@
 """
 Unit tests for LRUCache, JSON parsing resilience, and GeminiClient.
 """
+import asyncio
 import time
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from gemini_client import LRUCache, GeminiClient
 
@@ -74,6 +75,7 @@ class TestJsonParsing:
 
 class TestGeminiClientMocked:
     @patch("google.generativeai.GenerativeModel")
+    @patch("gemini_client.AI_PROVIDER", "gemini")
     def test_generate_caching(self, mock_model_cls):
         client = GeminiClient()
         mock_response = MagicMock()
@@ -89,3 +91,22 @@ class TestGeminiClientMocked:
         res2 = client.generate("test prompt")
         assert res2 == {"status": "ok"}
         assert client.model.generate_content.call_count == 1  # Still 1 call!
+
+
+class TestOpenAIClientMocked:
+    @patch("gemini_client.AsyncOpenAI")
+    @patch("gemini_client.OpenAI")
+    @patch("gemini_client.AI_PROVIDER", "openai")
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}, clear=False)
+    def test_openai_generate_and_async(self, mock_openai_cls, mock_async_openai_cls):
+        client = GeminiClient()
+
+        response = MagicMock()
+        response.choices[0].message.content = '{"status": "ok"}'
+        client.openai_client.chat.completions.create.return_value = response
+        client.openai_async_client.chat.completions.create = AsyncMock(return_value=response)
+
+        assert client.generate("sync prompt") == {"status": "ok"}
+        assert asyncio.run(client.generate_async("async prompt")) == {"status": "ok"}
+        assert client.provider == "openai"
+        assert client.model_name == "gpt-4o-mini"
