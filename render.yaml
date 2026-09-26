@@ -15,7 +15,7 @@ services:
       - key: AI_PROVIDER
         value: gemini
       - key: GEMINI_MODEL
-        value: gemini-2.0-flash-lite
+        value: gemini-3.5-flash-lite
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
