@@ -194,7 +194,9 @@ class TestClientSavings:
         resp = MagicMock(); resp.text = '{"a": 1}'
         c.model.generate_content = MagicMock(return_value=resp)
         c.generate("p", max_tokens=321)
-        assert c.model.generate_content.call_args.kwargs["generation_config"] == {"max_output_tokens": 321}
+        generation_config = c.model.generate_content.call_args.kwargs["generation_config"]
+        assert generation_config["max_output_tokens"] == 321
+        assert generation_config["response_mime_type"] == "application/json"
 
     @patch("google.generativeai.GenerativeModel")
     @patch("gemini_client.AI_PROVIDER", "gemini")

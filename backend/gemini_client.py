@@ -223,6 +223,11 @@ class GeminiClient:
         """Effective output-token limit: the caller's per-feature cap, bounded by the global ceiling."""
         return min(max_tokens, MAX_OUTPUT_TOKENS) if max_tokens else MAX_OUTPUT_TOKENS
 
+    @classmethod
+    def _generation_config(cls, max_tokens: Optional[int]) -> dict:
+        """Keep structured JSON output enabled when applying a per-feature token ceiling."""
+        return {**GENERATION_CONFIG, "max_output_tokens": cls._ceiling(max_tokens)}
+
     @staticmethod
     def _log_usage(response: Any, elapsed_ms: int, label: str) -> None:
         """Log token usage (Gemini) so real spend per call is visible in the logs."""
@@ -335,7 +340,7 @@ class GeminiClient:
             try:
                 if provider == "gemini":
                     response = self.gemini_model.generate_content(
-                        prompt, generation_config={"max_output_tokens": limit}
+                        prompt, generation_config=self._generation_config(max_tokens)
                     )
                     if response.text is None:
                         raise RuntimeError("Gemini returned an empty response")
@@ -368,7 +373,7 @@ class GeminiClient:
                     response = await asyncio.to_thread(
                         self.gemini_model.generate_content,
                         prompt,
-                        generation_config={"max_output_tokens": limit},
+                        generation_config=self._generation_config(max_tokens),
                     )
                     if response.text is None:
                         raise RuntimeError("Gemini returned an empty response")
