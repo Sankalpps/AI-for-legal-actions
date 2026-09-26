@@ -24,10 +24,9 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 logger = logging.getLogger(__name__)
 
-# Configure available providers. Gemini remains the default for existing setups.
-# Prefer lower-cost models to conserve credits unless you specifically need a newer premium option.
+# Configure the single supported Google model.
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").strip().lower()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+GEMINI_MODEL = "gemini-2.0-flash-lite"
 AI_REQUEST_TIMEOUT = float(os.getenv("AI_REQUEST_TIMEOUT", "90"))
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "2048"))   # global ceiling for any single call
