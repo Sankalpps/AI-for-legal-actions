@@ -84,6 +84,7 @@ export default function Sidebar() {
             LexAI provides information only. Always consult a qualified legal professional.
           </p>
         </div>
+        <p className="mt-3 text-center text-[10px] text-slate-500">Copyright © 2026 LexAI. All rights reserved.</p>
       </div>
     </aside>
   );
